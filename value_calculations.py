@@ -10,6 +10,7 @@ from math import pi, sqrt, ceil
 import os
 import csv
 import statistics
+import matplotlib.pyplot as plt
 
 
 # Scenarios Titles
@@ -233,6 +234,7 @@ def get_stats_for_participant_sections(participant_no, sections):
 
         block_section_number = ceil((section_nr+1 )/2)
         section_id = section_type + str(block_section_number)
+        print("Frequency Statistical values for experiment " +str(h)+ " - " + section_id +":")
         print("Section " + str(section_id) + ". (" + str(section_first_timestamp.strftime("%y-%m-%d %H %M %S")) + 
         " - " + section_last_timestamp.strftime("%y-%m-%d %H %M %S") + "). Rows: " + str(len(curr_section.index))) 
         
@@ -250,7 +252,6 @@ def get_stats_for_participant_sections(participant_no, sections):
         section_frequencies_values_df = pd.DataFrame(columns = column_names_for_section)
         stat_vals = []
         #stat_vals.append(participant_no)
-        print("Frequency Statistical values for experiment " +str(h)+ " - " + section_id +":")
         for j in range(0,len(frequency_columns)):
             stat_vals.append(curr_section[frequency_columns[j]].mean())
             stat_vals.append(curr_section[frequency_columns[j]].min())
@@ -448,16 +449,17 @@ def save_sections(participant_no, mean_stress_values, baselines, experiment_orde
 # Experiment order: R=Rational, S=StringUtil, U=UtilObject
 total_stat_val_df = pd.DataFrame() 
 
+'''
 participants = ['01','02']
 experiments_order = [
     ['R', 'S', 'U'],
     ['U', 'R', 'S']
 ]
-
 '''
 participants = [
     '01', 
-    '02', 
+    '02',
+    '03', 
     '04', 
     '05', 
     '06'
@@ -465,18 +467,18 @@ participants = [
 experiments_order = [
     ['R', 'S', 'U'],
     ['U', 'R', 'S'],
+    ['S', 'U', 'R'],
     ['R', 'S', 'U'],
     ['U', 'R', 'S'],
     ['S', 'U', 'R']
 ]
-'''
 
 # Iterating through the participants
 for i in range(0, len(participants)):
     print("==== Participant "+participants[i]+" ====")
     st_val_df = execute_class(participants[i], experiments_order[i])
 
-    total_stat_val_df = total_stat_val_df.append(st_val_df)
+    total_stat_val_df = total_stat_val_df.append(st_val_df, ignore_index = True)
 
     print()
 
@@ -484,5 +486,45 @@ print("total_stat_val_df -------------")
 print(total_stat_val_df.shape)
 
 total_stat_val_df.to_csv('aResults/satistical_values.csv')
+
+# do some plots 
+# Alpha_Average Mean Values
+alpha_mean_col_names = ['F1_Alpha_Avg_mean', 'S1_Alpha_Avg_mean','F2_Alpha_Avg_mean', 'S2_Alpha_Avg_mean','F3_Alpha_Avg_mean', 'S3_Alpha_Avg_mean']
+title_start = 'Alpha_Avg Mean Participant '
+plot_participant_values_from_cols(total_stat_val_df,alpha_mean_col_names,title_start)
+# Beata_Average Mean Values
+beta_mean_col_names = ['F1_Beta_Avg_mean', 'S1_Beta_Avg_mean','F2_Beta_Avg_mean', 'S2_Beta_Avg_mean','F3_Beta_Avg_mean', 'S3_Beta_Avg_mean']
+title_start = 'Beta_Avg Mean Participant '
+plot_participant_values_from_cols(total_stat_val_df,beta_mean_col_names, title_start)
+
+
+
+
+
+# %%
+def plot_participant_values_from_cols(total_stat_val_df, col_names, title_start):
+    # Alpha_Average Mean Values
+    array_for_plot = []
+    x_ticks_labels = ['F1','S1','F2','S2','F3','S3']
+    for part_nr in range(0, len(participants)):
+        array_for_plot = []
+        array_for_plot.append(total_stat_val_df.iloc[part_nr][col_names[0]])
+        array_for_plot.append(total_stat_val_df.iloc[part_nr][col_names[1]])
+        array_for_plot.append(total_stat_val_df.iloc[part_nr][col_names[2]])
+        array_for_plot.append(total_stat_val_df.iloc[part_nr][col_names[3]])
+        array_for_plot.append(total_stat_val_df.iloc[part_nr][col_names[4]])
+        array_for_plot.append(total_stat_val_df.iloc[part_nr][col_names[5]])
+        #fig, ax = plt.subplots(1,1)
+        plt.figure()
+        title_str = title_start + str(part_nr)
+        plt.title(title_str, y=1.15, fontsize=14)
+        plt.xlabel("Phase")
+        plt.ylabel("Alpha_avg")
+        #ax.set_xticklabels(x_ticks_labels, rotation='vertical', fontsize=18)
+        plt.xticks(range(len(array_for_plot)),x_ticks_labels,size='small')
+        plt.plot(array_for_plot,  marker='o')
+        plt.show()
+
+
 
 # %%
