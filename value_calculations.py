@@ -491,18 +491,26 @@ total_stat_val_df.to_csv('aResults/satistical_values.csv')
 # Alpha_Average Mean Values
 alpha_mean_col_names = ['F1_Alpha_Avg_mean', 'S1_Alpha_Avg_mean','F2_Alpha_Avg_mean', 'S2_Alpha_Avg_mean','F3_Alpha_Avg_mean', 'S3_Alpha_Avg_mean']
 title_start = 'Alpha_Avg Mean Participant '
-plot_participant_values_from_cols(total_stat_val_df,alpha_mean_col_names,title_start)
+fig_sufix = 'Alpha_Mean_P'
+plot_participant_values_from_cols(total_stat_val_df,alpha_mean_col_names,title_start, fig_sufix)
 # Beata_Average Mean Values
 beta_mean_col_names = ['F1_Beta_Avg_mean', 'S1_Beta_Avg_mean','F2_Beta_Avg_mean', 'S2_Beta_Avg_mean','F3_Beta_Avg_mean', 'S3_Beta_Avg_mean']
 title_start = 'Beta_Avg Mean Participant '
-plot_participant_values_from_cols(total_stat_val_df,beta_mean_col_names, title_start)
+fig_sufix = 'Beta_Mean_P'
+plot_participant_values_from_cols(total_stat_val_df,beta_mean_col_names, title_start, fig_sufix)
+# Theta_Average Mean Values
+theta_mean_col_names = ['F1_Theta_Avg_mean', 'S1_Theta_Avg_mean','F2_Theta_Avg_mean', 'S2_Theta_Avg_mean','F3_Theta_Avg_mean', 'S3_Theta_Avg_mean']
+title_start = 'Theta_Avg Mean Participant '
+fig_sufix = 'Theta_Mean_P'
+plot_participant_values_from_cols(total_stat_val_df,beta_mean_col_names, title_start, fig_sufix)
+
 
 
 
 
 
 # %%
-def plot_participant_values_from_cols(total_stat_val_df, col_names, title_start):
+def plot_participant_values_from_cols(total_stat_val_df, col_names, title_start, fig_sufix):
     # Alpha_Average Mean Values
     array_for_plot = []
     x_ticks_labels = ['F1','S1','F2','S2','F3','S3']
@@ -514,8 +522,8 @@ def plot_participant_values_from_cols(total_stat_val_df, col_names, title_start)
         array_for_plot.append(total_stat_val_df.iloc[part_nr][col_names[3]])
         array_for_plot.append(total_stat_val_df.iloc[part_nr][col_names[4]])
         array_for_plot.append(total_stat_val_df.iloc[part_nr][col_names[5]])
-        #fig, ax = plt.subplots(1,1)
-        plt.figure()
+        fig, ax = plt.subplots(1,1,tight_layout=True)
+        #fig = plt.figure()
         title_str = title_start + str(part_nr)
         plt.title(title_str, y=1.15, fontsize=14)
         plt.xlabel("Phase")
@@ -524,6 +532,8 @@ def plot_participant_values_from_cols(total_stat_val_df, col_names, title_start)
         plt.xticks(range(len(array_for_plot)),x_ticks_labels,size='small')
         plt.plot(array_for_plot,  marker='o')
         plt.show()
+        img_sufix = fig_sufix + str(part_nr)
+        fig.savefig('aResults/'+img_sufix+'.png')
 
 
 
