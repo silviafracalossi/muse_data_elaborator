@@ -357,6 +357,9 @@ total_ratio_val_df.to_csv('aResults/ratio_values.csv')
 doPlots = True
 if (doPlots):
     # do some plots 
+
+    ####################
+    ## PER PARTICIPANT
     xlabel = 'Phase'
     # Alpha_Average Mean Values
     alpha_mean_col_names = ['F1_Alpha_Avg_mean', 'S1_Alpha_Avg_mean','F2_Alpha_Avg_mean', 'S2_Alpha_Avg_mean','F3_Alpha_Avg_mean', 'S3_Alpha_Avg_mean']
@@ -379,6 +382,9 @@ if (doPlots):
 
     # the ratios 
     plot_participant_ratio_values(total_ratio_val_df, save_png = True)
+
+    ####################
+    ## PER 
 
 
 
@@ -421,6 +427,7 @@ def plot_array(array_for_plot, title_str, x_ticks_labels, img_name, xlabel, ylab
     plt.show()
     if save_png:
         fig.savefig('aResults/imgs/'+img_name+'.png')
+    return ax
 
 
 def plot_participant_ratio_values(total_ratio_val_df, save_png = False):
