@@ -50,16 +50,12 @@ def execute_class(participant_no, experiment_order):
         # Get basic general statistical data from sections
         stat_values_participant_df = get_stats_for_participant_sections(participant_no, sections)
 
-        # Normalize the experiment based on its baseline and the quality of data
-        normalized_sections, baselines = define_baseline(sections)
-        
+        # Calculate ratios
+        ratio_values_participant_df = calculate_ratios_of_participant(stat_values_participant_df)
+
         # Splitting data into comparable windows
-        window_stress_values = split_in_windows(normalized_sections, baselines, windows_no)
 
-        # Save file in CSV
-        save_sections(participant_no, window_stress_values, baselines, experiment_order)
-
-        return stat_values_participant_df
+        return stat_values_participant_df, ratio_values_participant_df
 
 
 
@@ -242,16 +238,13 @@ def get_stats_for_participant_sections(participant_no, sections):
         frequency_names_for_section = [ section_id + '_' + s for s in frequency_columns]
         stat_values_names = ['mean','min','max','median','mode','std']
         column_names_for_section  = []
-        #column_names_for_section.append('participant_nr')
         for i in range(len(frequency_columns)):
             for j in range(len(stat_values_names)):
                 column_names_for_section.append(frequency_names_for_section[i] + '_' + stat_values_names[j])
         # TODO the last minute names
 
-        # Storing the mean of the baseline
         section_frequencies_values_df = pd.DataFrame(columns = column_names_for_section)
         stat_vals = []
-        #stat_vals.append(participant_no)
         for j in range(0,len(frequency_columns)):
             stat_vals.append(curr_section[frequency_columns[j]].mean())
             stat_vals.append(curr_section[frequency_columns[j]].min())
@@ -259,19 +252,49 @@ def get_stats_for_participant_sections(participant_no, sections):
             stat_vals.append(curr_section[frequency_columns[j]].median())
             stat_vals.append(curr_section[frequency_columns[j]].mode())
             stat_vals.append(curr_section[frequency_columns[j]].std())
-            #print("-- " + frequency_columns[j] + ": " +('%.2f' % (section_frequencies_values[j],)).rstrip('0').rstrip('.'))
 
             # additionally append last minute for the baseline
             #if(section_type == 'F'):
             #    section_frequencies_values.append(df_baseline_last_minute[frequency_columns[j]].mean())
         section_frequencies_values_df.loc[len(section_frequencies_values_df), :] = stat_vals
     
-        # we concatenate all the sections for one participant
+        # concatenate all the sections for one participant (grow column numbers)
         if section_nr == 0:
             participant_total_df = participant_total_df.append(section_frequencies_values_df)#, ignore_index = True)
         else:
             participant_total_df = pd.concat([participant_total_df,section_frequencies_values_df.reindex(participant_total_df.index)], axis=1) #, ignore_index=True)
 
+    return participant_total_df
+
+#%%
+def calculate_ratios_of_participant(stat_values_df):
+    stat_values_df.rename(columns=lambda x: x.strip())
+    section_ratio_names = ['F1R1','F1R2','S1R1','S1R2','F2R1','F2R2','S2R1','S2R2','F3R1','F3R2','S3R1','S3R2']
+    section_ratio_values_df = pd.DataFrame(columns = section_ratio_names)
+
+    alpha_mean_col_names = ['F1_Alpha_Avg_mean', 'S1_Alpha_Avg_mean','F2_Alpha_Avg_mean', 'S2_Alpha_Avg_mean','F3_Alpha_Avg_mean', 'S3_Alpha_Avg_mean']
+    beta_mean_col_names = ['F1_Beta_Avg_mean', 'S1_Beta_Avg_mean','F2_Beta_Avg_mean', 'S2_Beta_Avg_mean','F3_Beta_Avg_mean', 'S3_Beta_Avg_mean']
+    theta_mean_col_names = ['F1_Theta_Avg_mean', 'S1_Theta_Avg_mean','F2_Theta_Avg_mean', 'S2_Theta_Avg_mean','F3_Theta_Avg_mean', 'S3_Theta_Avg_mean']
+
+    participant_total_df = pd.DataFrame() 
+
+    ratio_vals_per_participant = []
+    for part_nr in range(len(stat_values_df)):
+        ratio_vals_per_participant = []
+        section_ratio_values_df = pd.DataFrame(columns = section_ratio_names)
+        for section_nr in range(len(alpha_mean_col_names)):
+            # Beta / (Alpha + Theta)
+            ratio1 = stat_values_df.iloc[part_nr][beta_mean_col_names[section_nr]] / (stat_values_df.iloc[part_nr][alpha_mean_col_names[section_nr]] + stat_values_df.iloc[part_nr][theta_mean_col_names[section_nr]] )
+            # Theta / (Alpha + Beta)
+            ratio2 = stat_values_df.iloc[part_nr][theta_mean_col_names[section_nr]] / (stat_values_df.iloc[part_nr][alpha_mean_col_names[section_nr]] + stat_values_df.iloc[part_nr][beta_mean_col_names[section_nr]] )
+            ratio_vals_per_participant.append(ratio1)
+            ratio_vals_per_participant.append(ratio2)
+
+        section_ratio_values_df.loc[len(section_ratio_values_df), :] = ratio_vals_per_participant
+        
+        # append 
+        participant_total_df = participant_total_df.append(section_ratio_values_df, ignore_index = True)
+    
     return participant_total_df
 
 
@@ -280,6 +303,162 @@ def get_stats_for_participant_sections(participant_no, sections):
 
 
 
+#%%
+# -------------------Main Method-------------------------------------------
+
+# Experiment order: R=Rational, S=StringUtil, U=UtilObject
+total_stat_val_df = pd.DataFrame() 
+total_ratio_val_df = pd.DataFrame() 
+
+'''
+participants = ['01','02']
+experiments_order = [
+    ['R', 'S', 'U'],
+    ['U', 'R', 'S']
+]
+'''
+participants = [
+    '01', 
+    '02',
+    '03', 
+    '04', 
+    '05', 
+    '06'
+]
+experiments_order = [
+    ['R', 'S', 'U'],
+    ['U', 'R', 'S'],
+    ['S', 'U', 'R'],
+    ['R', 'S', 'U'],
+    ['U', 'R', 'S'],
+    ['S', 'U', 'R']
+]
+
+# Iterating through the participants
+for i in range(0, len(participants)):
+    print("==== Participant "+participants[i]+" ====")
+    st_val_df, rat_val_df = execute_class(participants[i], experiments_order[i])
+
+    total_stat_val_df = total_stat_val_df.append(st_val_df, ignore_index = True)
+    total_ratio_val_df = total_ratio_val_df.append(rat_val_df, ignore_index = True)
+
+    print()
+
+print("total_stat_val_df -------------")
+print(total_stat_val_df.shape)
+
+total_stat_val_df.to_csv('aResults/satistical_values.csv')
+total_ratio_val_df.to_csv('aResults/ratio_values.csv')
+
+
+
+
+
+doPlots = True
+if (doPlots):
+    # do some plots 
+    xlabel = 'Phase'
+    # Alpha_Average Mean Values
+    alpha_mean_col_names = ['F1_Alpha_Avg_mean', 'S1_Alpha_Avg_mean','F2_Alpha_Avg_mean', 'S2_Alpha_Avg_mean','F3_Alpha_Avg_mean', 'S3_Alpha_Avg_mean']
+    title_start = 'Alpha_Avg Mean Participant '
+    fig_sufix = 'Alpha_Mean_P'
+    ylabel = 'Alpha_avg'
+    plot_participant_stat_values_one_freq(total_stat_val_df,alpha_mean_col_names,title_start, fig_sufix, xlabel, ylabel, save_png = True)
+    # Beata_Average Mean Values
+    beta_mean_col_names = ['F1_Beta_Avg_mean', 'S1_Beta_Avg_mean','F2_Beta_Avg_mean', 'S2_Beta_Avg_mean','F3_Beta_Avg_mean', 'S3_Beta_Avg_mean']
+    title_start = 'Beta_Avg Mean Participant '
+    fig_sufix = 'Beta_Mean_P'
+    ylabel = 'Beta_avg'
+    plot_participant_stat_values_one_freq(total_stat_val_df,beta_mean_col_names, title_start, fig_sufix, xlabel, ylabel, save_png = True)
+    # Theta_Average Mean Values
+    theta_mean_col_names = ['F1_Theta_Avg_mean', 'S1_Theta_Avg_mean','F2_Theta_Avg_mean', 'S2_Theta_Avg_mean','F3_Theta_Avg_mean', 'S3_Theta_Avg_mean']
+    title_start = 'Theta_Avg Mean Participant '
+    fig_sufix = 'Theta_Mean_P'
+    ylabel = 'Theta_avg'
+    plot_participant_stat_values_one_freq(total_stat_val_df,beta_mean_col_names, title_start, fig_sufix,xlabel, ylabel, save_png = True)
+
+    # the ratios 
+    plot_participant_ratio_values(total_ratio_val_df, save_png = True)
+
+
+
+
+
+# %%
+def plot_participant_stat_values_one_freq(total_stat_val_df, col_names, title_start, fig_sufix, xlabel, ylabel, save_png = False):
+    array_for_plot = []
+    x_ticks_labels = ['F1','S1','F2','S2','F3','S3']
+    for part_nr in range(0, len(total_stat_val_df)):
+        array_for_plot = []
+        array_for_plot.append(total_stat_val_df.iloc[part_nr][col_names[0]])
+        array_for_plot.append(total_stat_val_df.iloc[part_nr][col_names[1]])
+        array_for_plot.append(total_stat_val_df.iloc[part_nr][col_names[2]])
+        array_for_plot.append(total_stat_val_df.iloc[part_nr][col_names[3]])
+        array_for_plot.append(total_stat_val_df.iloc[part_nr][col_names[4]])
+        array_for_plot.append(total_stat_val_df.iloc[part_nr][col_names[5]])
+        title_str = title_start + str(part_nr)
+        fig_name = fig_sufix + str(part_nr)
+        plot_array(array_for_plot, title_str, x_ticks_labels, fig_name, xlabel, ylabel, save_png)
+
+
+def get_array_for_plot_for_ratio(rv_df, part_nr, col_names):
+    array_for_plot = []
+    array_for_plot.append(rv_df.iloc[part_nr][col_names[0]])
+    array_for_plot.append(rv_df.iloc[part_nr][col_names[1]])
+    array_for_plot.append(rv_df.iloc[part_nr][col_names[2]])
+    array_for_plot.append(rv_df.iloc[part_nr][col_names[3]])
+    array_for_plot.append(rv_df.iloc[part_nr][col_names[4]])
+    array_for_plot.append(rv_df.iloc[part_nr][col_names[5]])
+    return array_for_plot
+
+def plot_array(array_for_plot, title_str, x_ticks_labels, img_name, xlabel, ylabel, save_png):
+    fig, ax = plt.subplots(1,1,tight_layout=True)
+    plt.title(title_str, y=1.15, fontsize=14)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.xticks(range(len(array_for_plot)),x_ticks_labels,size='small')
+    plt.plot(array_for_plot,  marker='o')
+    plt.show()
+    if save_png:
+        fig.savefig('aResults/imgs/'+img_name+'.png')
+
+
+def plot_participant_ratio_values(total_ratio_val_df, save_png = False):
+    array_for_plot = []
+    x_ticks_labels = ['F1','S1','F2','S2','F3','S3']
+    col_names = list(total_ratio_val_df)
+    substr = 'R1'
+    col_names_R1 = [s for s in col_names if substr in s]
+    substr = 'R2'
+    col_names_R2 = [s for s in col_names if substr in s]
+
+    for part_nr in range(0, len(total_ratio_val_df)):
+        #Ratio 1 
+        title_start = 'Ratio 1 P '
+        fig_sufix = 'ratio1_'
+        xlabel = ''
+        ylabel = ''
+        array_for_plot = get_array_for_plot_for_ratio(total_ratio_val_df, part_nr, col_names_R1)
+        title_str = title_start + str(part_nr)
+        fig_name = fig_sufix + str(part_nr)
+        plot_array(array_for_plot, title_str, x_ticks_labels, fig_name, xlabel, ylabel, save_png)
+
+        #Ratio 2 
+        title_start = 'Ratio 2 P '
+        fig_sufix = 'ratio2_'
+        xlabel = ''
+        ylabel = ''
+        array_for_plot = get_array_for_plot_for_ratio(total_ratio_val_df, part_nr, col_names_R2)
+        title_str = title_start + str(part_nr)
+        fig_name = fig_sufix + str(part_nr)
+        plot_array(array_for_plot, title_str, x_ticks_labels, fig_name, xlabel, ylabel, save_png)
+
+
+
+
+
+# %%
+'''
 #%%
 # 5. Normalizing the data based on the baseline
 def define_baseline(sections):
@@ -442,99 +621,4 @@ def save_sections(participant_no, mean_stress_values, baselines, experiment_orde
             writer = csv.writer(file)
             writer.writerow(header)
             writer.writerow([mean_stress_values[i][0], baselines[i*2], mean_stress_values[i][1], baselines[(i*2)+1]])
-
-#%%
-# -------------------Main Method-------------------------------------------
-
-# Experiment order: R=Rational, S=StringUtil, U=UtilObject
-total_stat_val_df = pd.DataFrame() 
-
 '''
-participants = ['01','02']
-experiments_order = [
-    ['R', 'S', 'U'],
-    ['U', 'R', 'S']
-]
-'''
-participants = [
-    '01', 
-    '02',
-    '03', 
-    '04', 
-    '05', 
-    '06'
-]
-experiments_order = [
-    ['R', 'S', 'U'],
-    ['U', 'R', 'S'],
-    ['S', 'U', 'R'],
-    ['R', 'S', 'U'],
-    ['U', 'R', 'S'],
-    ['S', 'U', 'R']
-]
-
-# Iterating through the participants
-for i in range(0, len(participants)):
-    print("==== Participant "+participants[i]+" ====")
-    st_val_df = execute_class(participants[i], experiments_order[i])
-
-    total_stat_val_df = total_stat_val_df.append(st_val_df, ignore_index = True)
-
-    print()
-
-print("total_stat_val_df -------------")
-print(total_stat_val_df.shape)
-
-total_stat_val_df.to_csv('aResults/satistical_values.csv')
-
-# do some plots 
-# Alpha_Average Mean Values
-alpha_mean_col_names = ['F1_Alpha_Avg_mean', 'S1_Alpha_Avg_mean','F2_Alpha_Avg_mean', 'S2_Alpha_Avg_mean','F3_Alpha_Avg_mean', 'S3_Alpha_Avg_mean']
-title_start = 'Alpha_Avg Mean Participant '
-fig_sufix = 'Alpha_Mean_P'
-plot_participant_values_from_cols(total_stat_val_df,alpha_mean_col_names,title_start, fig_sufix)
-# Beata_Average Mean Values
-beta_mean_col_names = ['F1_Beta_Avg_mean', 'S1_Beta_Avg_mean','F2_Beta_Avg_mean', 'S2_Beta_Avg_mean','F3_Beta_Avg_mean', 'S3_Beta_Avg_mean']
-title_start = 'Beta_Avg Mean Participant '
-fig_sufix = 'Beta_Mean_P'
-plot_participant_values_from_cols(total_stat_val_df,beta_mean_col_names, title_start, fig_sufix)
-# Theta_Average Mean Values
-theta_mean_col_names = ['F1_Theta_Avg_mean', 'S1_Theta_Avg_mean','F2_Theta_Avg_mean', 'S2_Theta_Avg_mean','F3_Theta_Avg_mean', 'S3_Theta_Avg_mean']
-title_start = 'Theta_Avg Mean Participant '
-fig_sufix = 'Theta_Mean_P'
-plot_participant_values_from_cols(total_stat_val_df,beta_mean_col_names, title_start, fig_sufix)
-
-
-
-
-
-
-# %%
-def plot_participant_values_from_cols(total_stat_val_df, col_names, title_start, fig_sufix):
-    # Alpha_Average Mean Values
-    array_for_plot = []
-    x_ticks_labels = ['F1','S1','F2','S2','F3','S3']
-    for part_nr in range(0, len(participants)):
-        array_for_plot = []
-        array_for_plot.append(total_stat_val_df.iloc[part_nr][col_names[0]])
-        array_for_plot.append(total_stat_val_df.iloc[part_nr][col_names[1]])
-        array_for_plot.append(total_stat_val_df.iloc[part_nr][col_names[2]])
-        array_for_plot.append(total_stat_val_df.iloc[part_nr][col_names[3]])
-        array_for_plot.append(total_stat_val_df.iloc[part_nr][col_names[4]])
-        array_for_plot.append(total_stat_val_df.iloc[part_nr][col_names[5]])
-        fig, ax = plt.subplots(1,1,tight_layout=True)
-        #fig = plt.figure()
-        title_str = title_start + str(part_nr)
-        plt.title(title_str, y=1.15, fontsize=14)
-        plt.xlabel("Phase")
-        plt.ylabel("Alpha_avg")
-        #ax.set_xticklabels(x_ticks_labels, rotation='vertical', fontsize=18)
-        plt.xticks(range(len(array_for_plot)),x_ticks_labels,size='small')
-        plt.plot(array_for_plot,  marker='o')
-        plt.show()
-        img_sufix = fig_sufix + str(part_nr)
-        fig.savefig('aResults/'+img_sufix+'.png')
-
-
-
-# %%
